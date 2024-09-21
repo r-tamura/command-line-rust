@@ -11,7 +11,7 @@ const BUSTLE: &str = "tests/inputs/the-bustle.txt";
 #[test]
 fn usage() -> anyhow::Result<()> {
     for flag in &["-h", "--help"] {
-        Command::cargo_bin("PRG")?
+        Command::cargo_bin(PRG)?
             .arg(flag)
             .assert()
             .stdout(predicate::str::contains("Usage"));
