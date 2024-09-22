@@ -99,3 +99,29 @@ fn bustle_stdin_b() -> TestResult {
         "tests/expected/the-bustle.txt.b.stdin.out",
     )
 }
+
+fn catr(args: &[&str], input: &str, expected: &str) -> TestResult {
+    Command::cargo_bin(PRG)?
+        .args(args)
+        .write_stdin::<String>(input.into())
+        .assert()
+        .success()
+        .stdout(expected.to_string());
+    Ok(())
+}
+
+#[test]
+fn when_squeeze_brank_option_enabled_suppress_repeated_empty_output_lines() -> TestResult {
+    catr(
+        &["-s", "-"],
+        r#"The quick brown fox jumps over the lazy dog.
+
+
+The quick brown fox jumps over the lazy dog.
+"#,
+        r#"The quick brown fox jumps over the lazy dog.
+
+The quick brown fox jumps over the lazy dog.
+"#,
+    )
+}
