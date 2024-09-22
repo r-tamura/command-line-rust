@@ -111,6 +111,15 @@ fn catr(args: &[&str], input: &str, expected: &str) -> TestResult {
 }
 
 #[test]
+fn when_input_ends_without_newline_then_output_ends_without_newline() -> TestResult {
+    catr(
+        &["-"],
+        "The quick brown fox jumps over the lazy dog.",
+        "The quick brown fox jumps over the lazy dog.",
+    )
+}
+
+#[test]
 fn when_squeeze_brank_option_enabled_suppress_repeated_empty_output_lines() -> TestResult {
     catr(
         &["-s", "-"],

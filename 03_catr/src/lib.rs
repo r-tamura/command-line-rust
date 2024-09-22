@@ -9,7 +9,7 @@ type MyResult<T> = Result<T, Box<dyn Error>>;
 #[derive(Debug, Parser)]
 #[command(version, about, long_about=None)]
 pub struct Config {
-    #[arg(value_name = "FILE", default_value = "-", num_args=1..)]
+    #[arg(value_name = "FILE", default_value = "-", num_args = 1..)]
     files: Vec<String>,
     #[arg(short = 'n', long, conflicts_with = "number_nonblank_lines")]
     number_lines: bool,
@@ -50,25 +50,16 @@ impl State {
         }
     }
 
-    fn increment(self) -> Self {
-        Self {
-            prev_line_num: self.prev_line_num + 1,
-            ..self
-        }
+    fn increment(&mut self) {
+        self.prev_line_num += 1;
     }
 
-    fn blank(self) -> Self {
-        Self {
-            is_prev_blank: true,
-            ..self
-        }
+    fn blank(&mut self) {
+        self.is_prev_blank = true;
     }
 
-    fn nonblank(self) -> Self {
-        Self {
-            is_prev_blank: false,
-            ..self
-        }
+    fn nonblank(&mut self) {
+        self.is_prev_blank = false;
     }
 }
 
@@ -76,44 +67,50 @@ pub fn run(config: Config) -> MyResult<()> {
     for filename in config.files {
         match open(&filename) {
             Err(err) => eprintln!("{}: {}", filename, err),
-            Ok(file) => {
+            Ok(mut file) => {
                 let mut state = State::new();
-                for (line_num, line) in file.lines().enumerate() {
-                    let line = line?;
-                    let numbering_type = if config.number_lines {
-                        LineNumbering::All
-                    } else if config.number_nonblank_lines {
-                        LineNumbering::Nonblank
-                    } else {
-                        LineNumbering::None
-                    };
+                let mut line_num = 0;
+                let numbering_type = if config.number_lines {
+                    LineNumbering::All
+                } else if config.number_nonblank_lines {
+                    LineNumbering::Nonblank
+                } else {
+                    LineNumbering::None
+                };
+                let mut line = String::new();
+                while let Ok(read) = file.read_line(&mut line) {
+                    if read == 0 {
+                        break;
+                    }
                     let is_current_blank = line.trim().is_empty();
-
                     if config.squeeze_blank && state.is_prev_blank && is_current_blank {
+                        line.clear();
                         continue;
                     }
 
                     match numbering_type {
                         LineNumbering::All => {
-                            println!("{:6}\t{line}", line_num + 1);
+                            print!("{:6}\t{line}", line_num + 1);
                         }
                         LineNumbering::Nonblank => {
                             if is_current_blank {
                                 println!();
                             } else {
-                                println!("{:6}\t{line}", state.prev_line_num);
-                                state = state.increment();
+                                print!("{:6}\t{line}", state.prev_line_num);
+                                state.increment();
                             }
                         }
                         LineNumbering::None => {
-                            println!("{}", line);
+                            print!("{}", line);
                         }
                     }
-                    state = if is_current_blank {
-                        state.blank()
+                    if is_current_blank {
+                        state.blank();
                     } else {
-                        state.nonblank()
+                        state.nonblank();
                     };
+                    line_num += 1;
+                    line.clear();
                 }
             }
         }
