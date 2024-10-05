@@ -1,5 +1,6 @@
 use std::{io::BufRead, path::Path};
 
+use anyhow::Context;
 use clap::Parser;
 
 fn positive_num(value: &str) -> Result<usize, String> {
@@ -46,6 +47,16 @@ fn open(filepath: impl AsRef<Path>) -> anyhow::Result<Box<dyn BufRead>> {
     Ok(Box::new(reader))
 }
 
+fn head_bytes(file: &mut impl BufRead, n: usize) -> Result<String, anyhow::Error> {
+    let mut buffer = vec![0; n];
+    let read = file.read(&mut buffer).context("error: unexpected error")?;
+    if read == 0 {
+        return Ok("".into());
+    }
+    let buffer = buffer[..read].to_vec();
+    Ok(String::from_utf8_lossy(&buffer).into())
+}
+
 pub fn run(args: Args) {
     for file in &args.files {
         let mut file = match open(&file) {
@@ -74,22 +85,34 @@ pub fn run(args: Args) {
                 }
             }
             Mode::Bytes(n) => {
-                let mut buffer = vec![0; *n + 1];
-                let read = match file.read(&mut buffer) {
-                    Ok(read) => read,
-                    Err(_) => {
-                        eprintln!("error: unexpected error");
-                        return;
-                    }
-                };
-                if read == 0 {
-                    break;
-                }
-
-                let mut buffer = buffer.into_iter().filter(|b| *b != 0).collect::<Vec<u8>>();
-                buffer.pop();
-                print!("{}", String::from_utf8_lossy(&buffer));
+                let haeded = head_bytes(&mut file, *n).unwrap();
+                print!("{}", haeded);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    // TODO: ファイルアクセスを行わないテストへ変更する
+    #[test]
+    fn バイト数オプション_ファイルのバイト数より指定されたバイト数のが多いとき_ファイルのデータをすべて出力する(
+    ) {
+        // Arrange
+        let dir = tempdir().unwrap();
+        let filepath = dir.path().join("one.txt");
+        std::fs::write(&filepath, "Öne line, four words.\n").unwrap();
+
+        // Act
+        let mut file = std::io::BufReader::new(std::fs::File::open(&filepath).unwrap());
+        let actual = head_bytes(&mut file, 100).unwrap();
+
+        // Assert
+        assert_eq!(actual, "Öne line, four words.\n");
     }
 }
