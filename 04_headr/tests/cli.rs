@@ -160,7 +160,7 @@ fn バイト数オプションで指定されたバイト数より入力デー�
     // Act
     let actual = run_file(&["-c", "100", ONE]);
     // Assert
-    assert_eq_with_file(format!("{}\n", actual), ONE);
+    assert_eq_with_file(actual, ONE);
 }
 
 #[test]
