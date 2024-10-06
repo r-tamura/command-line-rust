@@ -101,6 +101,19 @@ fn run_file(args: &[&str]) -> String {
     String::from_utf8_lossy(&output.stdout).into()
 }
 
+fn run_stdin(args: &[&str], stdin: &str) -> String {
+    let mut args = args.to_vec();
+    args.push("-");
+    let output = Command::cargo_bin(PRG)
+        .expect("failed to run command")
+        .args(&args)
+        .write_stdin(stdin)
+        .output()
+        .expect("fail");
+    assert_eq!(output.status, process::ExitStatus::from_raw(0));
+    String::from_utf8_lossy(&output.stdout).into()
+}
+
 fn assert_eq_with_file(actual: impl AsRef<str>, expected_file: impl AsRef<str>) {
     let mut file = File::open(expected_file.as_ref()).expect("file not found");
     let mut buffer = String::new();
@@ -108,7 +121,7 @@ fn assert_eq_with_file(actual: impl AsRef<str>, expected_file: impl AsRef<str>) 
         .expect("Failed to read file");
     let expected: &str = buffer.as_ref();
 
-    assert_eq!(actual.as_ref().as_bytes(), expected.as_bytes()); // デバッグ用
+    assert_eq!(actual.as_ref().as_bytes(), expected.as_bytes());
     assert_eq!(actual.as_ref(), expected);
 }
 
@@ -152,6 +165,17 @@ fn 行数オプションで指定された行数より行数の入力データ�
     let actual = run_file(&["-n", "2", TWELVE]);
     // Assert
     assert_eq_with_file(actual, "tests/expected/twelve.txt.n2.out");
+}
+
+#[test]
+fn 入力ファイルの改行コードと同じ改行コードが出力される() {
+    // Act
+    let actual = run_stdin(&["-n", "2"], "abc\r\ndef\n");
+    // Assert
+    println!("===================");
+    println!("{}", actual);
+    println!("===================");
+    assert_eq!(actual, "abc\r\ndef\n");
 }
 
 #[test]

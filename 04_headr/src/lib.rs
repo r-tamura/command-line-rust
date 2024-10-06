@@ -1,4 +1,8 @@
-use std::{io::BufRead, path::Path};
+use std::{
+    fs::File,
+    io::{self, BufRead, BufReader, Read},
+    path::Path,
+};
 
 use anyhow::Context;
 use clap::Parser;
@@ -42,9 +46,17 @@ pub fn get_args() -> Args {
 }
 
 fn open(filepath: impl AsRef<Path>) -> anyhow::Result<Box<dyn BufRead>> {
-    let file = std::fs::File::open(filepath)?;
-    let reader = std::io::BufReader::new(file);
-    Ok(Box::new(reader))
+    let filepath = filepath.as_ref();
+    match filepath.to_str() {
+        Some("-") => {
+            let stdin = io::stdin();
+            Ok(Box::new(BufReader::new(stdin.lock())))
+        }
+        _ => {
+            let file = File::open(filepath)?;
+            Ok(Box::new(BufReader::new(file)))
+        }
+    }
 }
 
 fn head_bytes(file: &mut impl BufRead, n: usize) -> Result<String, anyhow::Error> {
@@ -54,6 +66,24 @@ fn head_bytes(file: &mut impl BufRead, n: usize) -> Result<String, anyhow::Error
         .read(&mut buf)
         .context("Failed to read")?;
     Ok(String::from_utf8_lossy(&buf[..read]).into())
+}
+
+fn head_lines(file: &mut impl BufRead, n: u64) {
+    let mut line = String::new();
+    for _ in 0..n {
+        let read = match file.read_line(&mut line) {
+            Ok(read) => read,
+            Err(_) => {
+                eprintln!("error: unexpected error");
+                return;
+            }
+        };
+        if read == 0 {
+            break;
+        }
+        print!("{}", line);
+        line.clear();
+    }
 }
 
 pub fn run(args: Args) {
@@ -68,20 +98,7 @@ pub fn run(args: Args) {
 
         match &args.mode() {
             Mode::Lines(n) => {
-                for _ in 0..*n {
-                    let mut line = String::new();
-                    let read = match file.read_line(&mut line) {
-                        Ok(read) => read,
-                        Err(_) => {
-                            eprintln!("error: unexpected error");
-                            return;
-                        }
-                    };
-                    if read == 0 {
-                        break;
-                    }
-                    print!("{}", line);
-                }
+                head_lines(&mut file, *n as u64);
             }
             Mode::Bytes(n) => {
                 let haeded = head_bytes(&mut file, *n).unwrap();
