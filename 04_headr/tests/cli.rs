@@ -13,8 +13,8 @@ use rand::{distributions::Alphanumeric, Rng};
 const PRG: &str = "headr";
 const EMPTY: &str = "./tests/inputs/empty.txt";
 const ONE: &str = "./tests/inputs/one.txt";
-const _TWO: &str = "./tests/inputs/two.txt";
-const _THREE: &str = "./tests/inputs/three.txt";
+const TWO: &str = "./tests/inputs/two.txt";
+const THREE: &str = "./tests/inputs/three.txt";
 const TWELVE: &str = "./tests/inputs/twelve.txt";
 
 fn random_string() -> String {
@@ -121,7 +121,7 @@ fn assert_eq_with_file(actual: impl AsRef<str>, expected_file: impl AsRef<str>) 
         .expect("Failed to read file");
     let expected: &str = buffer.as_ref();
 
-    assert_eq!(actual.as_ref().as_bytes(), expected.as_bytes());
+    // assert_eq!(actual.as_ref().as_bytes(), expected.as_bytes());
     assert_eq!(actual.as_ref(), expected);
 }
 
@@ -194,4 +194,20 @@ fn バイト数オプションで指定されたバイト数nが入力データ�
     let actual = run_file(&["-c", "2", ONE]);
     // Assert
     assert_eq_with_file(actual, "tests/expected/one.txt.c2.out");
+}
+
+#[test]
+fn 複数のファイルを指定されたとき_それぞれのファイルがセパレータで区切られて出力される() {
+    // Act
+    let actual = run_file(&[EMPTY, ONE, TWO, THREE, TWELVE]);
+    // Assert
+    assert_eq_with_file(actual, "tests/expected/all.out");
+}
+
+#[test]
+fn 複数ファイルを指定されたとき_それぞれのファイルに対して指定されたオプションが適用される() {
+    // Act
+    let actual = run_file(&["-n", "2", EMPTY, ONE, TWO, THREE, TWELVE]);
+    // Assert
+    assert_eq_with_file(actual, "tests/expected/all.n2.out");
 }

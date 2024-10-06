@@ -87,11 +87,15 @@ fn head_lines(file: &mut impl BufRead, n: u64) {
 }
 
 pub fn run(args: Args) {
-    for file in &args.files {
-        let mut file = match open(&file) {
+    let file_count = args.files.len();
+    for (i, filepath) in args.files.iter().enumerate() {
+        if file_count > 1 {
+            println!("==> {} <==", filepath);
+        }
+        let mut file = match open(&filepath) {
             Ok(file) => file,
             Err(_) => {
-                eprint!("{}: .* (os error 2)", file);
+                eprint!("{}: .* (os error 2)", filepath);
                 return;
             }
         };
@@ -104,6 +108,10 @@ pub fn run(args: Args) {
                 let haeded = head_bytes(&mut file, *n).unwrap();
                 print!("{}", haeded);
             }
+        }
+        let is_last = i == file_count - 1;
+        if file_count > 1 && !is_last {
+            println!();
         }
     }
 }
