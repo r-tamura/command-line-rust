@@ -48,13 +48,12 @@ fn open(filepath: impl AsRef<Path>) -> anyhow::Result<Box<dyn BufRead>> {
 }
 
 fn head_bytes(file: &mut impl BufRead, n: usize) -> Result<String, anyhow::Error> {
-    let mut buffer = vec![0; n];
-    let read = file.read(&mut buffer).context("error: unexpected error")?;
-    if read == 0 {
-        return Ok("".into());
-    }
-    let buffer = buffer[..read].to_vec();
-    Ok(String::from_utf8_lossy(&buffer).into())
+    let mut buf = vec![0; n];
+    let read = file
+        .take(n as u64)
+        .read(&mut buf)
+        .context("Failed to read")?;
+    Ok(String::from_utf8_lossy(&buf[..read]).into())
 }
 
 pub fn run(args: Args) {
