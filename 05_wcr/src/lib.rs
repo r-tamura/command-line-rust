@@ -7,6 +7,64 @@ use std::{
 
 use clap::{command, Parser};
 
+#[derive(Debug, PartialEq)]
+pub struct FileInfo {
+    num_lines: usize,
+    num_words: usize,
+    num_bytes: usize,
+    num_chars: usize,
+}
+
+pub fn count(mut handle: impl BufRead) -> Result<FileInfo, Box<dyn Error>> {
+    let mut num_lines = 0;
+    let mut num_words = 0;
+    let mut num_bytes = 0;
+    let mut num_chars = 0;
+
+    let mut line = String::new();
+    loop {
+        let read = handle.read_line(&mut line)?;
+        if read == 0 {
+            break;
+        }
+        num_lines += 1;
+        num_bytes += line.len();
+        num_chars += line.chars().count();
+        num_words += line.split_whitespace().count();
+
+        line.clear();
+    }
+
+    Ok(FileInfo {
+        num_lines,
+        num_words,
+        num_bytes,
+        num_chars,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{count, FileInfo};
+    use std::io::Cursor;
+
+    #[test]
+    fn test_count() {
+        // Act
+        let text = "I don't want the world. I just want your half.\r\n";
+        let info = count(Cursor::new(text));
+
+        // Assert
+        let expected = FileInfo {
+            num_lines: 1,
+            num_words: 10,
+            num_bytes: 48,
+            num_chars: 48,
+        };
+        assert_eq!(info.unwrap(), expected);
+    }
+}
+
 #[derive(Debug, Parser)]
 #[command(version, about = "Rust wc", long_about = None)]
 pub struct Args {
@@ -84,7 +142,13 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     for filepath in &config.files {
         match open(filepath) {
             Err(err) => eprintln!("{}: {}", filepath, err),
-            Ok(_) => println!("Opened {}", filepath),
+            Ok(handle) => {
+                let info = count(handle)?;
+                println!(
+                    "\t{}\t{}\t{} {}",
+                    info.num_lines, info.num_words, info.num_bytes, filepath
+                );
+            }
         }
     }
     Ok(())
