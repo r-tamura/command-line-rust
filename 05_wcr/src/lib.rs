@@ -85,10 +85,11 @@ pub struct Args {
     chars: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ByteCharMode {
     Bytes,
     Chars,
+    None,
 }
 
 #[derive(Debug)]
@@ -106,8 +107,10 @@ pub fn get_args() -> Result<Config, Box<dyn Error>> {
     let mut words = args.words;
     let mut mode = if args.bytes {
         ByteCharMode::Bytes
-    } else {
+    } else if args.chars {
         ByteCharMode::Chars
+    } else {
+        ByteCharMode::None
     };
 
     if [lines, words, args.bytes, args.chars].iter().all(|&x| !x) {
@@ -138,18 +141,50 @@ fn open(filepath: impl AsRef<Path>) -> Result<Box<dyn BufRead>, Box<dyn Error>> 
     }
 }
 
+fn format_value(value: usize, show: bool) -> String {
+    if show {
+        format!("{:>8}", value)
+    } else {
+        "".to_string()
+    }
+}
+
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let mut total_lines = 0;
+    let mut total_words = 0;
+    let mut total_bytes = 0;
+    let mut total_chars = 0;
     for filepath in &config.files {
         match open(filepath) {
             Err(err) => eprintln!("{}: {}", filepath, err),
             Ok(handle) => {
                 let info = count(handle)?;
+                total_lines += info.num_lines;
+                total_words += info.num_words;
+                total_bytes += info.num_bytes;
+                total_chars += info.num_chars;
+
                 println!(
-                    "\t{}\t{}\t{} {}",
-                    info.num_lines, info.num_words, info.num_bytes, filepath
+                    "{}{}{}{} {}",
+                    format_value(info.num_lines, config.lines),
+                    format_value(info.num_words, config.words),
+                    format_value(info.num_bytes, config.mode == ByteCharMode::Bytes),
+                    format_value(info.num_chars, config.mode == ByteCharMode::Chars),
+                    filepath
                 );
             }
         }
     }
+
+    if &config.files.len() > &1 {
+        println!(
+            "{}{}{}{} total",
+            format_value(total_lines, config.lines),
+            format_value(total_words, config.words),
+            format_value(total_bytes, config.mode == ByteCharMode::Bytes),
+            format_value(total_chars, config.mode == ByteCharMode::Chars),
+        );
+    }
+
     Ok(())
 }
