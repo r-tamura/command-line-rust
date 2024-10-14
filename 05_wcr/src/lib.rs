@@ -128,8 +128,10 @@ pub fn get_args() -> Result<Config, Box<dyn Error>> {
 }
 
 fn open(filepath: impl AsRef<Path>) -> Result<Box<dyn BufRead>, Box<dyn Error>> {
-    let filepath = filepath.as_ref();
-    match filepath.to_str() {
+    match filepath.as_ref().to_str() {
+        None => {
+            return Err("Invalid Unicode in file path".into());
+        }
         Some("-") => {
             let stdin = io::stdin();
             Ok(Box::new(BufReader::new(stdin.lock())))
@@ -154,7 +156,14 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut total_words = 0;
     let mut total_bytes = 0;
     let mut total_chars = 0;
-    for filepath in &config.files {
+
+    let filepaths = if config.files.len() == 0 {
+        &vec!["-".to_string()]
+    } else {
+        &config.files
+    };
+
+    for filepath in filepaths {
         match open(filepath) {
             Err(err) => eprintln!("{}: {}", filepath, err),
             Ok(handle) => {
@@ -165,18 +174,21 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
                 total_chars += info.num_chars;
 
                 println!(
-                    "{}{}{}{} {}",
+                    "{}{}{}{}{}",
                     format_value(info.num_lines, config.lines),
                     format_value(info.num_words, config.words),
                     format_value(info.num_bytes, config.mode == ByteCharMode::Bytes),
                     format_value(info.num_chars, config.mode == ByteCharMode::Chars),
-                    filepath
+                    match filepath.as_str() {
+                        "-" => "".to_string(),
+                        _ => format!(" {}", filepath),
+                    }
                 );
             }
         }
     }
 
-    if &config.files.len() > &1 {
+    if config.files.len() > 1 {
         println!(
             "{}{}{}{} total",
             format_value(total_lines, config.lines),
