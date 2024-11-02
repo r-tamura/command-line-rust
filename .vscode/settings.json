@@ -1,0 +1,8 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "03_catr/Cargo.toml",
+    "04_headr/Cargo.toml",
+    "05_wcr/Cargo.toml",
+    "06_uniqr/Cargo.toml"
+  ]
+}
