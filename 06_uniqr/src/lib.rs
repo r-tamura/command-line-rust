@@ -33,6 +33,64 @@ impl Config {
     }
 }
 
+pub struct ConfigBuilder {
+    in_file: Option<String>,
+    out_file: Option<String>,
+    count: bool,
+    debug: bool,
+}
+
+impl ConfigBuilder {
+    pub fn new() -> Self {
+        ConfigBuilder::default()
+    }
+
+    pub fn stdin(mut self) -> Self {
+        self.in_file = Some("-".to_string());
+        self
+    }
+
+    pub fn in_file(mut self, in_file: Option<String>) -> Self {
+        self.in_file = in_file;
+        self
+    }
+
+    pub fn out_file(mut self, out_file: Option<String>) -> Self {
+        self.out_file = out_file;
+        self
+    }
+
+    pub fn count(mut self, count: bool) -> Self {
+        self.count = count;
+        self
+    }
+
+    pub fn debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
+    }
+
+    pub fn build(self) -> Config {
+        Config {
+            in_file: self.in_file,
+            out_file: self.out_file,
+            count: self.count,
+            debug: self.debug,
+        }
+    }
+}
+
+impl Default for ConfigBuilder {
+    fn default() -> Self {
+        ConfigBuilder {
+            in_file: None,
+            out_file: None,
+            count: false,
+            debug: false,
+        }
+    }
+}
+
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
         Config {
@@ -141,12 +199,7 @@ mod tests {
 
     #[test]
     fn test_two_count_same() {
-        let config = Config {
-            in_file: None,
-            out_file: None,
-            count: true,
-            debug: false,
-        };
+        let config = ConfigBuilder::default().count(true).build();
         let input = "a\na\n";
         let expected = "   2 a\n";
         let actual = _run(&config, Cursor::new(input)).unwrap();
@@ -155,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_two_count_different() {
-        let config = Config::new(None, None, true);
+        let config = ConfigBuilder::default().count(true).build();
         let input = "a\nb\n";
         let expected = "   1 a\n   1 b\n";
         let actual = _run(&config, Cursor::new(input)).unwrap();
@@ -164,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_three_count_different() {
-        let config = Config::new(None, None, true);
+        let config = ConfigBuilder::default().count(true).build();
         let input = "a\na\nb\n";
         let expected = "   2 a\n   1 b\n";
         let actual = _run(&config, Cursor::new(input)).unwrap();
@@ -173,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_改行コードがある行とない行では区別されない() {
-        let config = Config::new(None, None, true);
+        let config = ConfigBuilder::default().count(true).build();
         let input = "a\na";
         let expected = "   2 a\n";
         let actual = _run(&config, Cursor::new(input)).unwrap();
