@@ -7,8 +7,8 @@ impl std::fmt::Display for UniqrError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             UniqrError::UnexpectedError(_) => write!(f, "処理中に不明なエラーが発生しました"),
-            UniqrError::FileNotFoundError(_, filepath) => {
-                write!(f, "ファイルが見つかりません: {}", filepath)
+            UniqrError::FileNotFoundError(e, filepath) => {
+                write!(f, "{}: {}", filepath, e)
             }
         }
     }
