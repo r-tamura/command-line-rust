@@ -71,8 +71,17 @@ fn open(filepath: &str) -> Result<Box<dyn std::io::BufRead>, UniqrError> {
 
 pub fn run(config: Config) -> Result<String, UniqrError> {
     let mut reader = open(config.in_file.unwrap_or("-".to_string()).as_str())?;
-    let mut buf = String::new();
-    reader.read_to_string(&mut buf)?;
+    let mut line = String::new();
 
-    Ok(buf)
+    let mut result = String::new();
+    loop {
+        let read = reader.read_line(&mut line)?;
+        if read == 0 {
+            break;
+        }
+        result.push_str(line.as_str());
+        line.clear();
+    }
+
+    Ok(result)
 }
