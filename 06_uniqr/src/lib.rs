@@ -8,12 +8,13 @@ use clap::{arg, Parser};
 pub struct Args {
     in_file: Option<String>,
     out_file: Option<String>,
-    #[arg(short, long)]
+    #[arg(short = 'c', long)]
     count: bool,
     #[arg(long)]
     debug: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct Config {
     pub in_file: Option<String>,
     pub out_file: Option<String>,
@@ -74,13 +75,27 @@ pub fn run(config: Config) -> Result<String, UniqrError> {
     let mut line = String::new();
 
     let mut result = String::new();
+    let mut prev_line = String::new();
+    let mut count = 1;
     loop {
         let read = reader.read_line(&mut line)?;
+        if prev_line == line {
+            count += 1;
+        }
+
         if read == 0 {
             break;
         }
-        result.push_str(line.as_str());
+
+        prev_line = line.clone();
+
+        if config.count {
+            result.push_str(format!("{:4} {}", count, prev_line).as_str());
+        } else {
+            result.push_str(format!("{}", prev_line).as_str());
+        }
         line.clear();
+        count = 1;
     }
 
     Ok(result)
