@@ -139,6 +139,92 @@ fn open(filepath: &str) -> Result<Box<dyn std::io::BufRead>, UniqrError> {
     }
 }
 
+struct UniqIterItem {
+    count: u32,
+    line: String,
+}
+
+struct UniqIter<R: std::io::BufRead> {
+    reader: R,
+    prev_line: String,
+    line: String,
+    count: u32,
+    finished: bool,
+}
+
+impl<R: std::io::BufRead> UniqIter<R> {
+    fn new(reader: R) -> Self {
+        UniqIter {
+            reader,
+            prev_line: String::new(),
+            line: String::new(),
+            count: 1,
+            finished: false,
+        }
+    }
+
+    fn found(&self, count: u32, line: String) -> Option<Result<UniqIterItem, UniqrError>> {
+        Some(Ok(UniqIterItem { count, line }))
+    }
+
+    fn finish(&mut self) -> Option<Result<UniqIterItem, UniqrError>> {
+        self.finished = true;
+        self.found(self.count, self.prev_line.clone())
+    }
+
+    pub fn init(&mut self) -> Result<(), UniqrError> {
+        let mut prev_line = String::new();
+        let read = self.reader.read_line(&mut prev_line)?;
+
+        if read == 0 {
+            self.finished = true;
+        }
+        self.prev_line = prev_line;
+        Ok(())
+    }
+}
+
+impl<R: std::io::BufRead> Iterator for UniqIter<R> {
+    type Item = Result<UniqIterItem, UniqrError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        let read = match self.reader.read_line(&mut self.line) {
+            Ok(read) => read,
+            Err(e) => return Some(Err(UniqrError::UnexpectedError(Box::new(e)))),
+        };
+        if read == 0 {
+            return self.finish();
+        }
+
+        while self.prev_line.trim() == self.line.trim() {
+            self.count += 1;
+            self.line.clear();
+            let read = match self.reader.read_line(&mut self.line) {
+                Ok(read) => read,
+                Err(e) => return Some(Err(UniqrError::UnexpectedError(Box::new(e)))),
+            };
+            if read == 0 {
+                return self.finish();
+            }
+        }
+
+        let item = UniqIterItem {
+            count: self.count,
+            line: self.prev_line.clone(),
+        };
+
+        self.prev_line = self.line.clone();
+        self.line.clear();
+        self.count = 1;
+
+        self.found(item.count, item.line.clone())
+    }
+}
+
 fn format_line(count: u32, line: &str, show_count: bool) -> String {
     if show_count {
         format!("{:4} {}", count, line)
@@ -148,42 +234,19 @@ fn format_line(count: u32, line: &str, show_count: bool) -> String {
 }
 
 pub fn _run<R: std::io::BufRead>(config: &Config, r: R) -> Result<String, UniqrError> {
-    let mut reader = r;
-    let mut line = String::new();
-
+    let reader = r;
     let mut result = String::new();
-    let mut prev_line = String::new();
-    let mut count = 1;
 
-    let read = reader.read_line(&mut prev_line)?;
-    if read == 0 {
-        return Ok(result);
+    let mut uniq_iter = UniqIter::new(reader);
+    uniq_iter.init()?;
+    for item in uniq_iter {
+        let item = item?;
+        let line = item.line;
+        let count = item.count;
+        result.push_str(format_line(count, line.as_str(), config.count).as_str());
     }
 
-    loop {
-        let read = reader.read_line(&mut line)?;
-
-        if read == 0 {
-            result.push_str(&format_line(count, prev_line.as_str(), config.count));
-            return Ok(result);
-        }
-
-        while prev_line.trim() == line.trim() {
-            count += 1;
-            line.clear();
-            let read = reader.read_line(&mut line)?;
-            if read == 0 {
-                result.push_str(&format_line(count, prev_line.as_str(), config.count));
-                return Ok(result);
-            }
-        }
-
-        result.push_str(&format_line(count, prev_line.as_str(), config.count));
-
-        prev_line = line.clone();
-        line.clear();
-        count = 1;
-    }
+    Ok(result)
 }
 
 pub fn run(config: Config) -> Result<String, UniqrError> {
