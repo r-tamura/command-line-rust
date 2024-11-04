@@ -1,3 +1,4 @@
 fn main() {
-    println!("Hello, world!");
+    let config = findr::get_args();
+    findr::run(&config);
 }
