@@ -3,6 +3,7 @@
     "03_catr/Cargo.toml",
     "04_headr/Cargo.toml",
     "05_wcr/Cargo.toml",
-    "06_uniqr/Cargo.toml"
+    "06_uniqr/Cargo.toml",
+    "07_findr/Cargo.toml"
   ]
 }
