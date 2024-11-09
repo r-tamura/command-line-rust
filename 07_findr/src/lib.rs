@@ -27,6 +27,12 @@ pub struct Config {
 pub fn get_args() -> Config {
     let args = Args::parse();
 
+    let paths = if args.paths.is_empty() {
+        vec![".".to_string()]
+    } else {
+        args.paths
+    };
+
     let entry_types = args
         .types
         .iter()
@@ -46,7 +52,7 @@ pub fn get_args() -> Config {
         .unwrap_or_default();
 
     Config {
-        paths: args.paths,
+        paths,
         names,
         entry_types,
     }
@@ -58,6 +64,7 @@ pub fn run(config: &Config) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
     fn test_learning_unwrap_or_default() {
@@ -66,5 +73,21 @@ mod tests {
         let res = err_vec.unwrap_or_default();
 
         assert_eq!(res, vec![] as Vec<String>);
+    }
+
+    #[test]
+    fn test_learning_regx() {
+        let re = Regex::new(".*[.]csv").unwrap();
+
+        assert!(re.is_match("abc.csv"), "'abc.csv' should match");
+        assert!(!re.is_match("abc.txt"), "'abc.txt' should not match");
+    }
+
+    #[test]
+    fn test_コマンドライン引数のパース_探索対象のパスが指定されていないとき_現在のディレクトリを対象にする(
+    ) {
+        let config = get_args();
+
+        assert_eq!(config.paths, vec![".".to_string()]);
     }
 }
