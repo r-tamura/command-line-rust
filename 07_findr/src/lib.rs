@@ -2,6 +2,7 @@ use clap::{builder, Parser, ValueEnum};
 use regex::Regex;
 
 use anyhow::Context;
+use walkdir::WalkDir;
 
 #[derive(Debug, Eq, PartialEq, Clone, ValueEnum)]
 pub enum EntryType {
@@ -61,7 +62,12 @@ pub fn get_args() -> Config {
 }
 
 pub fn run(config: &Config) {
-    println!("{:?}", config);
+    for path in &config.paths {
+        for entry in WalkDir::new(path) {
+            let entry = entry.unwrap();
+            println!("{}", entry.path().display());
+        }
+    }
 }
 
 #[cfg(test)]
