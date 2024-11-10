@@ -1,6 +1,8 @@
 use clap::{builder, Parser, ValueEnum};
 use regex::Regex;
 
+use anyhow::Context;
+
 #[derive(Debug, Eq, PartialEq, Clone, ValueEnum)]
 pub enum EntryType {
     Dir,
@@ -11,9 +13,9 @@ pub enum EntryType {
 #[derive(Parser)]
 struct Args {
     paths: Vec<String>,
-    #[arg[short, long]]
+    #[arg[short, long = "name"]]
     names: Vec<String>,
-    #[arg(short, long, value_parser = builder::PossibleValuesParser::new(&["f", "d", "l"]), num_args = 0..)]
+    #[arg(short, long = "type", value_parser = builder::PossibleValuesParser::new(&["f", "d", "l"]), num_args = 0..)]
     types: Vec<String>,
 }
 
@@ -47,9 +49,9 @@ pub fn get_args() -> Config {
     let names = args
         .names
         .iter()
-        .map(|n| Regex::new(n).map_err(|_| format!(r#"Invalid --name "{}"#, n)))
+        .map(|n| Regex::new(n).with_context(|| format!("error: invalid value '{}'", n)))
         .collect::<Result<Vec<_>, _>>()
-        .unwrap_or_default();
+        .unwrap();
 
     Config {
         paths,
@@ -63,7 +65,7 @@ pub fn run(config: &Config) {
 }
 
 #[cfg(test)]
-mod tests {
+mod learning_tests {
     use super::*;
 
     #[test]
@@ -76,7 +78,7 @@ mod tests {
     }
 
     #[test]
-    fn test_learning_regx() {
+    fn test_learning_regex() {
         let re = Regex::new(".*[.]csv").unwrap();
 
         assert!(re.is_match("abc.csv"), "'abc.csv' should match");
@@ -84,7 +86,41 @@ mod tests {
     }
 
     #[test]
-    fn test_コマンドライン引数のパース_探索対象のパスが指定されていないとき_現在のディレクトリを対象にする(
+    fn test_learning_不正な正規表現文字列のパースに失敗する() {
+        let re = Regex::new("*.txt");
+
+        assert!(re.is_err());
+    }
+
+    #[test]
+    fn learning_resultのvec型をのvecのresult型に変換するとき_ループは途中で中断される() {
+        let vec = vec![1, 2, 3];
+
+        let mut count = 0;
+        let res: Result<Vec<i32>, String> = vec
+            .into_iter()
+            .map(|e| {
+                println!("--- {}", e);
+                count += 1;
+                if e == 1 {
+                    Err("one".into())
+                } else {
+                    Ok(e)
+                }
+            })
+            .collect();
+
+        assert_eq!(res, Err("one".into()));
+        assert_eq!(count, 1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn コマンドライン引数のパース_探索対象のパスが指定されていないとき_現在のディレクトリを対象にする(
     ) {
         let config = get_args();
 

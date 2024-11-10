@@ -49,7 +49,10 @@ fn dies_bad_name() -> Result<()> {
 // --------------------------------------------------
 #[test]
 fn dies_bad_type() -> Result<()> {
-    let expected = "error: invalid value 'x' for '--type [<TYPE>...]'";
+    let expected = r#"error: invalid value 'x' for '--type [<TYPES>...]'
+  [possible values: f, d, l]
+
+For more information, try '--help'"#;
     Command::cargo_bin(PRG)?
         .args(["--type", "x"])
         .assert()
@@ -76,15 +79,13 @@ fn format_file_name(expected_file: &str) -> Cow<str> {
 fn run(args: &[&str], expected_file: &str) -> Result<()> {
     let file = format_file_name(expected_file);
     let contents = fs::read_to_string(file.as_ref())?;
-    let mut expected: Vec<&str> =
-        contents.split('\n').filter(|s| !s.is_empty()).collect();
+    let mut expected: Vec<&str> = contents.split('\n').filter(|s| !s.is_empty()).collect();
     expected.sort();
 
     let cmd = Command::cargo_bin(PRG)?.args(args).assert().success();
     let out = cmd.get_output();
     let stdout = String::from_utf8(out.stdout.clone())?;
-    let mut lines: Vec<&str> =
-        stdout.split('\n').filter(|s| !s.is_empty()).collect();
+    let mut lines: Vec<&str> = stdout.split('\n').filter(|s| !s.is_empty()).collect();
     lines.sort();
 
     assert_eq!(lines, expected);
@@ -303,8 +304,7 @@ fn unreadable_dir() -> Result<()> {
 
     let out = cmd.get_output();
     let stdout = String::from_utf8(out.stdout.clone())?;
-    let lines: Vec<&str> =
-        stdout.split('\n').filter(|s| !s.is_empty()).collect();
+    let lines: Vec<&str> = stdout.split('\n').filter(|s| !s.is_empty()).collect();
 
     assert_eq!(lines.len(), 17);
 
