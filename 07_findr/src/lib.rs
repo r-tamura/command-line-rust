@@ -62,6 +62,11 @@ pub fn get_args() -> Config {
 }
 
 fn matches_entry_type(config: &Config, entry: &DirEntry) -> bool {
+    // エントリの種類が指定されないとき、すべてのファイルタイプにマッチする
+    if config.entry_types.is_empty() {
+        return true;
+    }
+
     let file_type = entry.file_type();
     let entry_type = if file_type.is_dir() {
         EntryType::Dir
@@ -76,23 +81,24 @@ fn matches_entry_type(config: &Config, entry: &DirEntry) -> bool {
     config.entry_types.contains(&entry_type)
 }
 
+fn matches_name_pattern(config: &Config, entry: &DirEntry) -> bool {
+    // 名前のパターンが指定されないとき、すべてのファイル名にマッチする
+    if config.names.is_empty() {
+        return true;
+    }
+    let name = entry.file_name().to_string_lossy();
+
+    config.names.iter().any(|pattern| pattern.is_match(&name))
+}
+
 pub fn run(config: &Config) {
     for path in &config.paths {
-        for entry in WalkDir::new(path).into_iter().filter(|e| match e {
-            Err(e) => {
-                eprintln!("error: {}", e);
-                return false;
-            }
-            Ok(e) => matches_entry_type(&config, &e),
-        }) {
-            let entry = match entry {
-                Err(e) => {
-                    eprintln!("error: {}", e);
-                    continue;
-                }
-                Ok(e) => e,
-            };
-
+        for entry in WalkDir::new(path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| matches_entry_type(&config, e))
+            .filter(|e| matches_name_pattern(&config, e))
+        {
             println!("{}", entry.path().display());
         }
     }
