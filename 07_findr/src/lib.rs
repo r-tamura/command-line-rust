@@ -2,7 +2,7 @@ use clap::{builder, Parser, ValueEnum};
 use regex::Regex;
 
 use anyhow::Context;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Eq, PartialEq, Clone, ValueEnum)]
 pub enum EntryType {
@@ -61,10 +61,38 @@ pub fn get_args() -> Config {
     }
 }
 
+fn matches_entry_type(config: &Config, entry: &DirEntry) -> bool {
+    let file_type = entry.file_type();
+    let entry_type = if file_type.is_dir() {
+        EntryType::Dir
+    } else if file_type.is_file() {
+        EntryType::File
+    } else if file_type.is_symlink() {
+        EntryType::Link
+    } else {
+        return false;
+    };
+
+    config.entry_types.contains(&entry_type)
+}
+
 pub fn run(config: &Config) {
     for path in &config.paths {
-        for entry in WalkDir::new(path) {
-            let entry = entry.unwrap();
+        for entry in WalkDir::new(path).into_iter().filter(|e| match e {
+            Err(e) => {
+                eprintln!("error: {}", e);
+                return false;
+            }
+            Ok(e) => matches_entry_type(&config, &e),
+        }) {
+            let entry = match entry {
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    continue;
+                }
+                Ok(e) => e,
+            };
+
             println!("{}", entry.path().display());
         }
     }
