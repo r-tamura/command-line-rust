@@ -95,7 +95,13 @@ pub fn run(config: &Config) {
     for path in &config.paths {
         for entry in WalkDir::new(path)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(|e| match e {
+                Ok(e) => Some(e),
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return None;
+                }
+            })
             .filter(|e| matches_entry_type(&config, e))
             .filter(|e| matches_name_pattern(&config, e))
         {
